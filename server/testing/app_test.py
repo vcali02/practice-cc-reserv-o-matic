@@ -179,7 +179,7 @@ class TestApp:
                 )
                 .json
             )
-            print(response)
+
             assert response["id"]
             assert response["customer_id"] == peter.id
             assert response["location_id"] == pizza.id
@@ -221,9 +221,73 @@ class TestApp:
                 )
                 .json
             )
-            print(response)
 
             assert response["error"]
+
+    def test_updates_reservations(self):
+        """updates reservations with PATCH request to /reservations"""
+
+        with app.app_context():
+            Reservation.query.delete()
+            Customer.query.delete()
+            Location.query.delete()
+            db.session.commit()
+            peter = Customer(
+                name="Peter Parker",
+                email="thehumanspider@wannabeanavenger.com",
+            )
+            pizza = Location(name="Happys Pizza", max_party_size=6)
+            db.session.add_all([peter, pizza])
+            db.session.commit()
+
+            response = (
+                app.test_client()
+                .post(
+                    "/reservations",
+                    json={
+                        "reservation_date": "2023-06-18",
+                        "customer_id": peter.id,
+                        "location_id": pizza.id,
+                        "party_size": 4,
+                        "party_name": "spider friends",
+                    },
+                )
+                .json
+            )
+
+            reservation = Reservation.query.filter(
+                Reservation.party_name == "spider friends"
+            ).first()
+            assert reservation
+            print(reservation.id)
+            response = (
+                app.test_client()
+                .patch(
+                    f"/reservations/{reservation.id}",
+                    json={
+                        "reservation_date": "2023-06-20",
+                        "customer_id": peter.id,
+                        "location_id": pizza.id,
+                        "party_size": 6,
+                    },
+                )
+                .json
+            )
+
+            print(response)
+            assert response["id"]
+            assert response["customer_id"] == peter.id
+            assert response["location_id"] == pizza.id
+            assert response["party_size"] == 6
+            assert response["reservation_date"] == "2023-06-20"
+
+            updated_reservation = Reservation.query.filter(
+                Reservation.id == reservation.id
+            ).first()
+            assert updated_reservation
+
+            Reservation.query.delete()
+            db.session.commit()
 
     def test_deletes_reservation_by_id(self):
         """deletes locations with DELETE request to /reservations/<int:id>."""
@@ -255,7 +319,7 @@ class TestApp:
                 )
                 .json
             )
-            print(response)
+
             assert response["id"]
             assert response["customer_id"] == peter.id
             assert response["location_id"] == pizza.id
